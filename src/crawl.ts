@@ -70,7 +70,10 @@ export async function getHTML(urlString: string) {
     
     const contentTypeHeaderContents = contentTypeHeader.split("; ");
     const contentType = contentTypeHeaderContents[0];
-    const charset = contentTypeHeaderContents[1].split("=")[1];
+    let charset = "utf-8"
+    if (contentTypeHeaderContents.length > 1) {
+      charset = contentTypeHeaderContents[1].split("=")[1];
+    }
     if (contentType !== 'text/html') {
       console.error(`Not sutialbe content type.`);
       return;
