@@ -1,4 +1,5 @@
 import { crawlSiteAsync } from "./concurrent-crawler";
+import { getReport } from "./report";
 
 async function main() {
   const args = process.argv;
@@ -7,8 +8,9 @@ async function main() {
     process.exit(1);
   }
 
-  const data = await crawlSiteAsync(args[2], 10);
-  console.log(data);
+  const requestedURL = args[2];
+  const data = await crawlSiteAsync(requestedURL, 10);
+  console.log(getReport(requestedURL, data));
   process.exit(0);
 }
 
