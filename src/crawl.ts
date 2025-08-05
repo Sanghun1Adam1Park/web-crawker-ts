@@ -1,100 +1,87 @@
-import { URL } from "node:url";
-import { InvlaidURLError } from "./errors/invalid-url-error";
-import { JSDOM } from 'jsdom'
-import { InvlaidHTMLError } from "./errors/invalid-html-error";
+import { JSDOM } from "jsdom";
 
-export function normalizeURL(urlString: string) {
-  let url;
-
-  try {
-    url = new URL(urlString);
-  } catch {
-    console.error("Error: Invlaid URL");
-    return; 
+export function normalizeURL(url: string) {
+  const urlObj = new URL(url);
+  let fullPath = `${urlObj.host}${urlObj.pathname}`;
+  if (fullPath.slice(-1) === "/") {
+    fullPath = fullPath.slice(0, -1);
   }
-
-  if (!(url.protocol === "http:" || url.protocol === "https:")) {
-    console.error("Error: Not a http URL");
-    return;
-  }
-
-  const normalizedURL = `${url.hostname}${removeTrailingSlash(url.pathname)}`
-  return normalizedURL; 
-}
-
-function removeTrailingSlash(pathName: string): string {
-  if (pathName.endsWith('/')) {
-    return pathName.slice(0, -1);
-  }
-  return pathName;
+  return fullPath;
 }
 
 export function getURLsFromHTML(html: string, baseURL: string) {
-  const foundURLs = []; 
-  let dom;
+  const urls = [];
+  const dom = new JSDOM(html);
+  const anchors = dom.window.document.querySelectorAll("a");
 
-  try {
-    dom = new JSDOM(html);
-  } catch {
-    console.error("Error: Invlaid HTML");
-    return;
-  }
-
-  const anchors = dom.window.document.querySelectorAll('a'); 
   for (const anchor of anchors) {
-    if (!anchor.hostname) { // relative
-      foundURLs.push(`${baseURL}${anchor.toString()}`);
-    } else { // absolute
-      foundURLs.push(anchor.toString());
+    let href = anchor.getAttribute("href");
+    if (href) {
+      try {
+        href = new URL(href, baseURL).href;
+        urls.push(href);
+      } catch (err) {
+        console.log(`${(err as Error).message}: ${href}`);
+      }
     }
   }
 
-  return foundURLs; 
+  return urls;
 }
 
-export async function getHTML(urlString: string) {
-  try {
-    const res = await fetch(urlString);
-
-    const status = res.status;
-    if (status >= 400) {
-      console.error(`${status}:${res.statusText}`);
-      return;
-    }
-
-    const contentTypeHeader = res.headers.get("content-type");
-    if (!contentTypeHeader) {
-      console.error("Malformed Response");
-      return; 
-    }
-    
-    const contentTypeHeaderContents = contentTypeHeader.split("; ");
-    const contentType = contentTypeHeaderContents[0];
-    let charset = "utf-8"
-    if (contentTypeHeaderContents.length > 1) {
-      charset = contentTypeHeaderContents[1].split("=")[1];
-    }
-    if (contentType !== 'text/html') {
-      console.error(`Not sutialbe content type.`);
-      return;
-    }
-
-    if (!res.body) {
-      console.error("Empty body");
-      return; 
-    }
-  
-    let html = "";
-    const decoder = new TextDecoder(charset); 
-
-    for await (const chunk of res.body) {
-      html += decoder.decode(chunk, { stream: true });
-    }
-
-    return html;
-  } catch (err) {
-    if (err instanceof Error) {
-      console.error(err.message);
-    }
+export async function crawlPage(
+  baseURL: string,
+  currentURL: string = baseURL,
+  pages: Record<string, number> = {},
+) {
+  const currentURLObj = new URL(currentURL);
+  const baseURLObj = new URL(baseURL);
+  if (currentURLObj.hostname !== baseURLObj.hostname) {
+    return pages;
   }
+
+  const normalizedURL = normalizeURL(currentURL);
+
+  if (pages[normalizedURL] > 0) {
+    pages[normalizedURL]++;
+    return pages;
+  }
+
+  pages[normalizedURL] = 1;
+
+  console.log(`crawling ${currentURL}`);
+  let html = "";
+  try {
+    html = await getHTML(currentURL);
+  } catch (err) {
+    console.log(`${(err as Error).message}`);
+    return pages;
+  }
+
+  const nextURLs = getURLsFromHTML(html, baseURL);
+  for (const nextURL of nextURLs) {
+    pages = await crawlPage(baseURL, nextURL, pages);
+  }
+
+  return pages;
+}
+
+async function getHTML(url: string) {
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (err) {
+    throw new Error(`Got Network error: ${(err as Error).message}`);
+  }
+
+  if (res.status > 399) {
+    throw new Error(`Got HTTP error: ${res.status} ${res.statusText}`);
+  }
+
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("text/html")) {
+    throw new Error(`Got non-HTML response: ${contentType}`);
+  }
+
+  return res.text();
 }

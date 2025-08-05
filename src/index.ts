@@ -1,4 +1,4 @@
-import { getHTML, getURLsFromHTML, normalizeURL } from "./crawl";
+import { crawlSiteAsync } from "./concurrent-crawler";
 
 async function main() {
   const args = process.argv;
@@ -7,8 +7,8 @@ async function main() {
     process.exit(1);
   }
 
-  const data = await getHTML(args[2]);
-  console.log(`Recieved Data: ${data}`)
+  const data = await crawlSiteAsync(args[2], 10);
+  console.log(data);
   process.exit(0);
 }
 
