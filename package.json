@@ -1,0 +1,27 @@
+{
+  "name": "web-crawker-ts",
+  "version": "1.0.0",
+  "description": "TypeScript application that generates an \"internal links\" report for any website on the internet by crawling each page of the site.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "tsx ./src/index.ts",
+    "test": "vitest run"
+  },   
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sanghun1Adam1Park/web-crawker-ts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sanghun1Adam1Park/web-crawker-ts/issues"
+  },
+  "homepage": "https://github.com/Sanghun1Adam1Park/web-crawker-ts#readme",
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
